@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.routers import ai_scrape, format_json, esg_score, niche_data, webhook, web_extract, text_to_json
+from app.routers import ai_scrape, format_json, esg_score, niche_data, webhook, web_extract, text_to_json, condition_check
 
 app = FastAPI(
     title="Business APIs",
@@ -15,6 +15,7 @@ app.include_router(niche_data.router)
 app.include_router(webhook.router)
 app.include_router(web_extract.router)
 app.include_router(text_to_json.router)
+app.include_router(condition_check.router)
 
 @app.get("/")
 async def root():
