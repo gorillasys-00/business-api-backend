@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+pydantic
+trafilatura
+google-genai
+python-dotenv
+beautifulsoup4
+requests
