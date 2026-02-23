@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import os
 import json
+import re
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
@@ -34,8 +35,8 @@ async def post_format_json(payload: FormattingRequest):
         client = genai.Client(api_key=api_key)
         
         prompt = f"""
-        以下のテキストを分析し、指示されたスキーマ（JSON構造）に従ってJSONフォーマットで出力してください。
-        必ず有効なJSONテキストのみを出力し、Markdownブロック（```json など）は含めないでください。
+        以下のテキストを分析し、指示されたスキーマ（JSON構造）に従って純粋なJSONフォーマットのみで出力してください。
+        必ず有効なJSONテキストのみを出力し、マークダウン記法（```jsonなど）や前置きの文章、解説は一切含めないでください。
 
         [テキスト]
         {payload.text}
@@ -51,16 +52,14 @@ async def post_format_json(payload: FormattingRequest):
         
         # パースして有効なJSONか確認
         try:
-            # Markdownブロック（```json ... ```）が含まれていた場合は除去する
             result_text = response.text.strip()
-            if result_text.startswith("```json"):
-                result_text = result_text[7:]
-            if result_text.startswith("```"):
-                result_text = result_text[3:]
-            if result_text.endswith("```"):
-                result_text = result_text[:-3]
             
-            structured_json = json.loads(result_text.strip())
+            # 確実なJSON抽出処理 (前後の余分なテキストを削る)
+            json_match = re.search(r'(\{.*\}|\[.*\])', result_text, re.DOTALL)
+            if json_match:
+                result_text = json_match.group(1)
+            
+            structured_json = json.loads(result_text)
             return {"status": "success", "data": structured_json}
         except json.JSONDecodeError:
             raise HTTPException(

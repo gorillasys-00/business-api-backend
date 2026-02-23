@@ -11,19 +11,19 @@ headers = {
 
 endpoints = [
     {
-        "name": "Web抽出 (/web-extract)",
+        "name": "Web抽出 (/web-extract/)",
         "method": "GET",
-        "url": f"{base_url}/web-extract",
+        "url": f"{base_url}/web-extract/",
         "params": {
             "url": "https://www.nintendo.co.jp/corporate/outline/index.html",
-            "target": "会社概要" # Assuming target is required based on typical implementation
+            "target": "会社概要"
         },
         "json": None
     },
     {
-        "name": "JSON構造化 (/text-to-json)",
+        "name": "JSON構造化 (/text-to-json/)",
         "method": "POST",
-        "url": f"{base_url}/text-to-json/", # Add trailing slash if required by FastAPI
+        "url": f"{base_url}/text-to-json/",
         "params": None,
         "json": {
             "text": "明日の10時から第一会議室でキックオフを行います。参加者は田中と佐藤です。",
@@ -31,14 +31,14 @@ endpoints = [
         }
     },
     {
-        "name": "ESG判定 (/esg-score)",
+        "name": "ESG判定 (/esg-score/)",
         "method": "GET",
         "url": f"{base_url}/esg-score/",
         "params": {"company_name": "株式会社リベラAIコンサルティング"},
         "json": None
     },
     {
-        "name": "ニッチデータ抽出 (/niche-data)",
+        "name": "ニッチデータ抽出 (/niche-data/)",
         "method": "GET",
         "url": f"{base_url}/niche-data/",
         "params": {
@@ -48,9 +48,9 @@ endpoints = [
         "json": None
     },
     {
-        "name": "Webhookテスト (/webhook/register)",
+        "name": "Webhookテスト (/webhook/register/)",
         "method": "POST",
-        "url": f"{base_url}/webhook/register",
+        "url": f"{base_url}/webhook/register/",
         "params": None,
         "json": {
             "target_url": "https://example.com",
@@ -69,9 +69,9 @@ for idx, endpoint in enumerate(endpoints):
     
     try:
         if endpoint["method"] == "GET":
-            response = requests.get(endpoint["url"], headers=headers, params=endpoint["params"])
+            response = requests.get(endpoint["url"], headers=headers, params=endpoint["params"], allow_redirects=False)
         elif endpoint["method"] == "POST":
-            response = requests.post(endpoint["url"], headers=headers, json=endpoint["json"])
+            response = requests.post(endpoint["url"], headers=headers, json=endpoint["json"], allow_redirects=False)
         
         status_code = response.status_code
         try:
@@ -94,6 +94,6 @@ for idx, endpoint in enumerate(endpoints):
 
 print("\n--- Test Summary ---")
 if all_passed:
-    print("All endpoints returned 200 OK.")
+    print("All endpoints returned 200 OK without 307 Redirects.")
 else:
-    print("Some endpoints failed. Check the logs above.")
+    print("Some endpoints failed or returned redirects. Check the logs above.")

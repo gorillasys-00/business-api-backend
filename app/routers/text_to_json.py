@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import os
 import json
+import re
 from dotenv import load_dotenv
 
 # Use the google-genai library as previously configured
@@ -33,7 +34,7 @@ async def convert_text_to_json(request_data: TextToJsonRequest):
     try:
         client = genai.Client(api_key=api_key)
         
-        prompt = f"""以下のテキストから情報を抽出し、ユーザーの指示（{request_data.format_instruction}）に従って、必ずJSON形式のみで出力してください。見つからない項目はnullにしてください。余計なマークダウン（```json 等）は出力に含めないでください。
+        prompt = f"""以下のテキストから情報を抽出し、ユーザーの指示（{request_data.format_instruction}）に従って、必ず純粋なJSON形式のみで出力してください。見つからない項目はnullにしてください。マークダウン記法（```jsonなど）や前置きの文章、解説は一切含めないでください。
 
 【対象テキスト】
 {request_data.text}
@@ -46,14 +47,10 @@ async def convert_text_to_json(request_data: TextToJsonRequest):
         
         result_text = gemini_response.text.strip()
         
-        # Ensure markdown blocks are removed if generated
-        if result_text.startswith("```json"):
-            result_text = result_text[7:].strip()
-        elif result_text.startswith("```"):
-            result_text = result_text[3:].strip()
-            
-        if result_text.endswith("```"):
-            result_text = result_text[:-3].strip()
+        # 確実なJSON抽出処理 (前後の余分なテキストを削る)
+        json_match = re.search(r'(\{.*\}|\[.*\])', result_text, re.DOTALL)
+        if json_match:
+            result_text = json_match.group(1)
             
         extracted_data = json.loads(result_text)
         return extracted_data

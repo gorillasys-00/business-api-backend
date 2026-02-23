@@ -3,6 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 import os
 import json
+import re
 from dotenv import load_dotenv
 
 # Use the new google-genai library as previously configured
@@ -72,7 +73,7 @@ async def get_web_extract(
         
         # 4. Prompt instruction
         prompt = f"""
-以下のWebページのテキストから、ユーザーの要求（{target}）を満たす情報を抽出し、必ずJSON形式で出力してください。見つからない場合はnullにしてください。余計なマークダウン（```json 等）は出力に含めないでください。
+以下のWebページのテキストから、ユーザーの要求（{target}）を満たす情報を抽出し、必ず純粋なJSON形式のみで出力してください。見つからない場合はnullにしてください。マークダウン記法（```jsonなど）や前置きの文章、解説は一切含めないでください。
 
 [Webページテキスト]
 {truncated_text}
@@ -86,14 +87,10 @@ async def get_web_extract(
         # 5. Parse JSON
         result_text = gemini_response.text.strip()
         
-        # Ensure markdown blocks are removed if generated
-        if result_text.startswith("```json"):
-            result_text = result_text[7:].strip()
-        elif result_text.startswith("```"):
-            result_text = result_text[3:].strip()
-            
-        if result_text.endswith("```"):
-            result_text = result_text[:-3].strip()
+        # 確実なJSON抽出処理 (前後の余分なテキストを削る)
+        json_match = re.search(r'(\{.*\}|\[.*\])', result_text, re.DOTALL)
+        if json_match:
+            result_text = json_match.group(1)
             
         extracted_data = json.loads(result_text)
         return extracted_data
