@@ -17,7 +17,7 @@ class WebhookRegistration(BaseModel):
     callback_url: str
     event_type: str
 
-@router.post("/register")
+@router.post("/register/")
 async def register_webhook(data: WebhookRegistration):
     """
     Registers a new webhook and returns a subscription_id.
@@ -34,7 +34,7 @@ async def register_webhook(data: WebhookRegistration):
         "subscription_id": subscription_id
     }
 
-@router.post("/simulate/{subscription_id}")
+@router.post("/simulate/{subscription_id}/")
 async def simulate_webhook(subscription_id: str):
     """
     Simulates sending an event to the registered callback URL.
