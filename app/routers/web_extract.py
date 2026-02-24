@@ -82,6 +82,7 @@ async def get_web_extract(
         gemini_response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
+            config=genai.types.GenerateContentConfig(temperature=0.0),
         )
         
         # 5. Parse JSON

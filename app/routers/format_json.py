@@ -48,6 +48,7 @@ async def post_format_json(payload: FormattingRequest):
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
+            config=genai.types.GenerateContentConfig(temperature=0.0),
         )
         
         # パースして有効なJSONか確認
