@@ -33,7 +33,7 @@ async def get_esg_score(company_name: str):
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=genai.types.GenerateContentConfig(temperature=0.0),
+            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42),
         )
         
         # パースして有効なJSONか確認

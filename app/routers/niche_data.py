@@ -95,7 +95,7 @@ async def get_niche_data(
         gemini_response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=genai.types.GenerateContentConfig(temperature=0.0),
+            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42),
         )
         
         result_text = gemini_response.text.strip()

@@ -82,7 +82,7 @@ async def check_condition(
         gemini_response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=genai.types.GenerateContentConfig(temperature=0.0),
+            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42),
         )
         
         # 5. Parse JSON
