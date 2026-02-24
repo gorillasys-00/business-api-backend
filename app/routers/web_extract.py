@@ -16,6 +16,10 @@ router = APIRouter(
     tags=["web-extract"],
 )
 
+# In-memory cache for web extraction
+# Key: (url, target), Value: extracted data
+WEB_EXTRACT_CACHE = {}
+
 @router.get("/")
 async def get_web_extract(
     url: str = Query(..., description="抽出対象のWebページのURL"),
@@ -24,6 +28,11 @@ async def get_web_extract(
     """
     指定されたURLのWebページからテキストを抽出し、Gemini APIを用いてユーザーが要求する情報を抽出してJSONで返却します。
     """
+    # Check cache first
+    cache_key = (url, target)
+    if cache_key in WEB_EXTRACT_CACHE:
+        return WEB_EXTRACT_CACHE[cache_key]
+
     # 1. Fetch HTML using requests
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
@@ -82,7 +91,7 @@ async def get_web_extract(
         gemini_response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42, top_p=0.1, top_k=1),
+            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42),
         )
         
         # 5. Parse JSON
@@ -94,6 +103,10 @@ async def get_web_extract(
             result_text = json_match.group(1)
             
         extracted_data = json.loads(result_text)
+        
+        # Save to cache
+        WEB_EXTRACT_CACHE[cache_key] = extracted_data
+        
         return extracted_data
 
     except json.JSONDecodeError:

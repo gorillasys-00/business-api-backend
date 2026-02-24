@@ -14,6 +14,9 @@ router = APIRouter(
     tags=["format-json"],
 )
 
+# In-memory cache
+FORMAT_JSON_CACHE = {}
+
 class FormattingRequest(BaseModel):
     text: str
     schema_instruction: str
@@ -24,6 +27,11 @@ async def post_format_json(payload: FormattingRequest):
     Uses Gemini API to format raw text into structured JSON 
     based on the provided schema instruction.
     """
+    # Check cache first
+    cache_key = (payload.text, payload.schema_instruction)
+    if cache_key in FORMAT_JSON_CACHE:
+        return FORMAT_JSON_CACHE[cache_key]
+
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(
@@ -48,7 +56,7 @@ async def post_format_json(payload: FormattingRequest):
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42, top_p=0.1, top_k=1),
+            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42),
         )
         
         # パースして有効なJSONか確認
@@ -61,7 +69,12 @@ async def post_format_json(payload: FormattingRequest):
                 result_text = json_match.group(1)
             
             structured_json = json.loads(result_text)
-            return {"status": "success", "data": structured_json}
+            res_obj = {"status": "success", "data": structured_json}
+            
+            # Save to cache
+            FORMAT_JSON_CACHE[cache_key] = res_obj
+            
+            return res_obj
         except json.JSONDecodeError:
             raise HTTPException(
                 status_code=500, 

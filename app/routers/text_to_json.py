@@ -15,6 +15,9 @@ router = APIRouter(
     tags=["text-to-json"],
 )
 
+# In-memory cache
+TEXT_TO_JSON_CACHE = {}
+
 class TextToJsonRequest(BaseModel):
     text: str
     format_instruction: str
@@ -24,6 +27,11 @@ async def convert_text_to_json(request_data: TextToJsonRequest):
     """
     ぐちゃぐちゃなテキストを指定された指示に従ってJSON構造に変換して返却します。
     """
+    # Check cache first
+    cache_key = (request_data.text, request_data.format_instruction)
+    if cache_key in TEXT_TO_JSON_CACHE:
+        return TEXT_TO_JSON_CACHE[cache_key]
+
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise HTTPException(
@@ -43,7 +51,7 @@ async def convert_text_to_json(request_data: TextToJsonRequest):
         gemini_response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42, top_p=0.1, top_k=1),
+            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42),
         )
         
         result_text = gemini_response.text.strip()
@@ -54,6 +62,10 @@ async def convert_text_to_json(request_data: TextToJsonRequest):
             result_text = json_match.group(1)
             
         extracted_data = json.loads(result_text)
+        
+        # Save to cache
+        TEXT_TO_JSON_CACHE[cache_key] = extracted_data
+        
         return extracted_data
 
     except json.JSONDecodeError:

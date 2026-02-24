@@ -15,6 +15,10 @@ router = APIRouter(
     tags=["niche-data"],
 )
 
+# In-memory cache for niche data
+# Key: query, Value: extracted data
+NICHE_CACHE = {}
+
 @router.get("/")
 async def get_niche_data(
     query: str = Query(..., description="分析キーワード（例：「Japan Anime」など）")
@@ -25,6 +29,10 @@ async def get_niche_data(
     """
     if not query:
         raise HTTPException(status_code=400, detail="query parameter is required")
+
+    # Check cache first
+    if query in NICHE_CACHE:
+        return NICHE_CACHE[query]
 
     url = f"https://news.google.com/rss/search?q={query}&hl=ja&gl=JP&ceid=JP:ja"
     
@@ -95,7 +103,7 @@ async def get_niche_data(
         gemini_response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42, top_p=0.1, top_k=1),
+            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42),
         )
         
         result_text = gemini_response.text.strip()
@@ -104,8 +112,11 @@ async def get_niche_data(
             result_text = json_match.group(1)
             
         extracted_data = json.loads(result_text)
+        
+        # Save to cache
+        NICHE_CACHE[query] = extracted_data
+        
         return extracted_data
-
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch data: {str(e)}")
     except json.JSONDecodeError:

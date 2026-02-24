@@ -14,6 +14,10 @@ router = APIRouter(
     tags=["esg-score"],
 )
 
+# In-memory cache for ESG scores
+# Key: company_name, Value: structured JSON response
+ESG_CACHE = {}
+
 class ESGScoreResponse(BaseModel):
     company_name: str
     esg_score: int
@@ -36,6 +40,10 @@ async def get_esg_score(company_name: str):
             detail="GEMINI_API_KEYが設定されていません。.envファイルに設定してください。"
         )
 
+    # Check cache first
+    if company_name in ESG_CACHE:
+        return ESG_CACHE[company_name]
+
     try:
         client = genai.Client(api_key=api_key)
         
@@ -47,8 +55,6 @@ async def get_esg_score(company_name: str):
             config=genai.types.GenerateContentConfig(
                 temperature=0.0, 
                 seed=42,
-                top_p=0.1,
-                top_k=1,
                 response_mime_type="application/json",
                 response_schema=ESGScoreResponse,
             ),
@@ -65,6 +71,10 @@ async def get_esg_score(company_name: str):
                 result_text = json_match.group(1)
             
             structured_json = json.loads(result_text)
+            
+            # Save to cache
+            ESG_CACHE[company_name] = structured_json
+            
             return structured_json
         except json.JSONDecodeError:
             raise HTTPException(

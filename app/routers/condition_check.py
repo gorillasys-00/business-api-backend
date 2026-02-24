@@ -16,6 +16,9 @@ router = APIRouter(
     tags=["condition-check"],
 )
 
+# In-memory cache
+CONDITION_CACHE = {}
+
 @router.get("/")
 async def check_condition(
     url: str = Query(..., description="監視・確認対象のWebページのURL"),
@@ -24,6 +27,11 @@ async def check_condition(
     """
     指定されたURLのWebページからテキストを抽出し、Gemini APIを用いてユーザーが要求する条件を満たしているか判定してJSONで返却します。
     """
+    # Check cache first
+    cache_key = (url, condition)
+    if cache_key in CONDITION_CACHE:
+        return CONDITION_CACHE[cache_key]
+
     # 1. Fetch HTML using requests
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
@@ -82,7 +90,7 @@ async def check_condition(
         gemini_response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42, top_p=0.1, top_k=1),
+            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42),
         )
         
         # 5. Parse JSON
@@ -94,6 +102,10 @@ async def check_condition(
             result_text = json_match.group(1)
             
         extracted_data = json.loads(result_text)
+        
+        # Save to cache
+        CONDITION_CACHE[cache_key] = extracted_data
+        
         return extracted_data
 
     except json.JSONDecodeError:

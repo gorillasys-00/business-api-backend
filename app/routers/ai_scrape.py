@@ -6,12 +6,20 @@ router = APIRouter(
     tags=["ai-scrape"],
 )
 
+# In-memory cache for scraped content
+# Key: url, Value: scraped dict
+SCRAPE_CACHE = {}
+
 @router.get("/")
 async def get_ai_scrape(url: str):
     """
     Extracts the main content from the provided URL.
     Returns the content in markdown format.
     """
+    # Check cache first
+    if url in SCRAPE_CACHE:
+        return SCRAPE_CACHE[url]
+
     try:
         # Fetch the web page
         downloaded = trafilatura.fetch_url(url)
@@ -24,11 +32,16 @@ async def get_ai_scrape(url: str):
         if content is None:
             raise HTTPException(status_code=500, detail="本文の抽出に失敗しました。")
             
-        return {
+        res_obj = {
             "status": "success",
             "url": url,
             "content": content
         }
+        
+        # Save to cache
+        SCRAPE_CACHE[url] = res_obj
+        
+        return res_obj
         
     except HTTPException:
         raise
