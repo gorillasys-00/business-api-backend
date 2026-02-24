@@ -47,6 +47,8 @@ async def get_esg_score(company_name: str):
             config=genai.types.GenerateContentConfig(
                 temperature=0.0, 
                 seed=42,
+                top_p=0.1,
+                top_k=1,
                 response_mime_type="application/json",
                 response_schema=ESGScoreResponse,
             ),
