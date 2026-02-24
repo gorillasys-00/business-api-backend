@@ -4,6 +4,8 @@ import json
 import re
 from dotenv import load_dotenv
 from google import genai
+from pydantic import BaseModel
+from typing import List
 
 load_dotenv()
 
@@ -11,6 +13,15 @@ router = APIRouter(
     prefix="/api/v1/esg-score",
     tags=["esg-score"],
 )
+
+class ESGScoreResponse(BaseModel):
+    company_name: str
+    esg_score: int
+    environmental_score: int
+    social_score: int
+    governance_score: int
+    summary: str
+    key_initiatives: List[str]
 
 @router.get("/")
 async def get_esg_score(company_name: str):
@@ -28,12 +39,17 @@ async def get_esg_score(company_name: str):
     try:
         client = genai.Client(api_key=api_key)
         
-        prompt = f"企業『{company_name}』の一般的なESG（環境・社会・ガバナンス）の取り組みについて評価し、必ず純粋なJSON形式のみで出力してください。マークダウン記法（```jsonなど）や前置きの文章、解説は一切含めないでください。\n出力するJSONのキーは company_name (文字列), esg_score (1〜100の推定スコア数値), summary (100字程度の要約), key_initiatives (主な取り組み3つの配列) としてください。"
+        prompt = f"企業『{company_name}』の一般的なESG（環境・社会・ガバナンス）の取り組みについて評価し、必ず指定されたJSON構造で出力してください。\n出力するJSONのキーは company_name (文字列), esg_score (1〜100の推定総合スコア数値), environmental_score (1〜100の推定Eスコア数値), social_score (1〜100の推定Sスコア数値), governance_score (1〜100の推定Gスコア数値), summary (100字程度の要約), key_initiatives (主な取り組み3つの配列) としてください。"
 
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents=prompt,
-            config=genai.types.GenerateContentConfig(temperature=0.0, seed=42),
+            config=genai.types.GenerateContentConfig(
+                temperature=0.0, 
+                seed=42,
+                response_mime_type="application/json",
+                response_schema=ESGScoreResponse,
+            ),
         )
         
         # パースして有効なJSONか確認
