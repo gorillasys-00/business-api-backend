@@ -25,7 +25,13 @@ async def rate_limit_middleware(request: Request, call_next):
         
         # If no premium key is provided, enforce IP limit
         if not api_key or api_key == os.getenv("RAPIDAPI_KEY"):
-            client_ip = request.client.host
+            # Get real client IP from X-Forwarded-For if behind a proxy like Render
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                client_ip = forwarded.split(",")[0].strip()
+            else:
+                client_ip = request.client.host
+                
             usage = DEMO_USAGE.get(client_ip, 0)
             
             if usage >= MAX_FREE_CALLS:
