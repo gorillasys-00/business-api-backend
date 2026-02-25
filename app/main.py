@@ -16,9 +16,12 @@ MAX_FREE_CALLS = 5
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
-    # Only limit AI analysis endpoints
+    # Only limit AI analysis endpoints (anything under /api/v1/ except webhook)
     path = request.url.path
-    if path.startswith("/api/v1") and not path.endswith("/webhook"): # Webhook sender itself is free
+    client_ip = "unknown"
+    is_limited_path = "/api/v1/" in path and "/webhook" not in path
+    
+    if is_limited_path:
         # 1. Check for Premium Key (X-RapidAPI-Key)
         # In RapidAPI, the key is passed in this header
         api_key = request.headers.get("X-RapidAPI-Key")
@@ -30,7 +33,7 @@ async def rate_limit_middleware(request: Request, call_next):
             if forwarded:
                 client_ip = forwarded.split(",")[0].strip()
             else:
-                client_ip = request.client.host
+                client_ip = request.client.host if request.client else "no-client-host"
                 
             usage = DEMO_USAGE.get(client_ip, 0)
             
@@ -45,6 +48,9 @@ async def rate_limit_middleware(request: Request, call_next):
             DEMO_USAGE[client_ip] = usage + 1
             
     response = await call_next(request)
+    # Add debug info to header (optional, helps us verify IP detection)
+    if is_limited_path:
+        response.headers["X-Debug-IP"] = client_ip
     return response
 
 # Include routers
